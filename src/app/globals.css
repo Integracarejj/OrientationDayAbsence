@@ -1,0 +1,92 @@
+/* src/app/globals.css */
+
+/* Tailwind v4 imports */
+@import "tailwindcss";
+
+
+/* ---------------------------
+   Design tokens (stable)
+   --------------------------- */
+:root {
+  /* Core */
+  --app-bg: 0 0% 100%;
+  /* pure white */
+  --content-bg: 0 0% 100%;
+  --app-fg: 222 47% 11%;
+  /* slate-900-ish */
+  --app-muted: 215 25% 27%;
+  /* slate-700-ish */
+  --app-border: 214 32% 91%;
+  /* slate-200-ish */
+
+  /* Teal shell (intentionally NOT grey) */
+  --sidebar-bg: 174 60% 90%;
+  /* pastel teal */
+  --header-bg: 174 55% 92%;
+  /* pastel teal, slightly lighter */
+
+  /* Accent */
+  --accent: 174 75% 32%;
+  /* teal for focus / links */
+  --accent-2: 199 89% 48%;
+  /* optional sky accent */
+}
+
+/* Base */
+html {
+  color-scheme: light;
+}
+
+body {
+  background: hsl(var(--app-bg));
+  color: hsl(var(--app-fg));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Links */
+a {
+  color: hsl(var(--accent));
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Focus ring (tokenized) */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px hsl(var(--accent) / 0.35);
+  border-radius: 8px;
+}
+
+/* ---- Simple app typography baseline ---- */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+p {
+  margin: 0 0 0.75rem;
+  color: hsl(var(--app-fg)/0.85);
+}
