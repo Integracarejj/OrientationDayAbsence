@@ -2,13 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+
 import { SectionsMap } from "@/lib/dayInLife/types";
 import RolePicker from "./components/RolePicker";
 import Board from "./components/Board";
 import EditToolbar from "./components/EditToolbar";
 import { normalizePayload } from "@/lib/dayInLife/normalize";
 import { computeChangeSet } from "@/lib/dayInLife/diff";
-import Link from "next/link";
+
+import AcknowledgementBanner, {
+    type AcknowledgementState,
+} from "@/components/acknowledgements/AcknowledgementBanner";
 
 // Empty starter shape — "Calendar" intentionally removed
 const EMPTY_SECTIONS: SectionsMap = {
@@ -30,17 +35,34 @@ type DayInLifePageClientProps = {
     readOnly?: boolean;
 };
 
+type DayInLifeSummaryAny = Record<string, unknown> & {
+    // Optional meta fields (if/when your API adds them)
+    currentVersion?: number;
+    updatedAt?: string | null;
+    meta?: {
+        currentVersion?: number;
+        updatedAt?: string | null;
+    };
+};
+
 export default function DayInLifePageClient({ readOnly = false }: DayInLifePageClientProps) {
     const params = useSearchParams();
     const mode = params.get("mode") === "employee" ? "employee" : "supervisor";
     const modeQuery = `mode=${mode}`;
 
     const [role, setRole] = useState("");
-    const [sections, setSections] = useState<SectionsMap>(EMPTY_SECTIONS);
+    const [sections, setSections] = useState(EMPTY_SECTIONS);
+
     const [isEditing, setIsEditing] = useState(false);
     const [busy, setBusy] = useState(false);
     const [banner, setBanner] = useState<string | null>(null);
+
     const snapshotRef = useRef<SectionsMap | null>(null);
+
+    // Ack/meta state (employee mode)
+    const [contentVersion, setContentVersion] = useState<number>(1);
+    const [contentUpdatedAt, setContentUpdatedAt] = useState<string | null>(null);
+    const [ack, setAck] = useState<AcknowledgementState | null>(null);
 
     // For safety, prevent edit mode from ever being active in read-only mode
     useEffect(() => {
@@ -62,13 +84,70 @@ export default function DayInLifePageClient({ readOnly = false }: DayInLifePageC
             setBanner("We couldn't load the Day in the Life data. See console for details.");
             return;
         }
-        const json = await res.json();
+
+        const json = (await res.json()) as DayInLifeSummaryAny;
+
+        // Sections (existing behavior)
         setSections(normalizePayload(json));
+
+        // Optional meta fields (non-breaking if API doesn't provide them yet)
+        const v =
+            (typeof json.currentVersion === "number" ? json.currentVersion : undefined) ??
+            (typeof json.meta?.currentVersion === "number" ? json.meta?.currentVersion : undefined);
+
+        const u =
+            (typeof json.updatedAt === "string" ? json.updatedAt : undefined) ??
+            (typeof json.meta?.updatedAt === "string" ? json.meta?.updatedAt : undefined);
+
+        if (typeof v === "number" && v > 0) setContentVersion(v);
+        if (typeof u === "string") setContentUpdatedAt(u);
     }
 
     useEffect(() => {
         void load();
     }, []);
+
+    // -------------------------
+    // ACK LOAD (employee mode; role-scoped)
+    // -------------------------
+    async function loadAck(nextRole: string) {
+        if (mode !== "employee") return;
+        if (!nextRole) {
+            setAck(null);
+            return;
+        }
+
+        try {
+            const res = await fetch(
+                `/api/acknowledgements?role=${encodeURIComponent(nextRole)}&contentType=dayInLife`,
+                { cache: "no-store" }
+            );
+
+            if (!res.ok) {
+                // If the API isn't wired yet, don't hard-fail the page.
+                setAck(null);
+                return;
+            }
+
+            const json = (await res.json()) as {
+                acknowledgedVersion?: number;
+                acknowledgedAt?: string | null;
+            };
+
+            setAck({
+                acknowledgedVersion: json?.acknowledgedVersion ?? null,
+                acknowledgedAt: json?.acknowledgedAt ?? null,
+            });
+        } catch (e) {
+            console.error("Failed to load acknowledgement", e);
+            setAck(null);
+        }
+    }
+
+    useEffect(() => {
+        void loadAck(role);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [role, mode]);
 
     // -------------------------
     // SAVE CHANGES
@@ -213,21 +292,36 @@ export default function DayInLifePageClient({ readOnly = false }: DayInLifePageC
     // RENDER
     // -------------------------
     return (
-        <div className="mx-auto max-w-6xl px-4 py-6">
+        <div className="space-y-4">
             {/* Top Toolbar */}
-            <div className="mb-4 flex items-center justify-between gap-4">
+            <div className="flex items-start justify-between gap-3">
                 {/* Left: Role Picker */}
-                <RolePicker value={role} onChange={setRole} />
+                <div className="min-w-65">
+                    <RolePicker value={role} onChange={setRole} />
+                </div>
+
+                {/* Middle: Acknowledgement area (employee mode only) */}
+                <div className="flex-1">
+                    {mode === "employee" && role ? (
+                        <AcknowledgementBanner
+                            roleCode={role}
+                            contentType="dayInLife"
+                            currentVersion={contentVersion}
+                            updatedAt={contentUpdatedAt}
+                            state={ack}
+                            onAcknowledged={(next) => setAck(next)}
+                        />
+                    ) : null}
+                </div>
 
                 {/* Right: Edit + Days of Week Button */}
                 <div className="flex items-center gap-2">
-                    {!readOnly && <EditToolbar isEditing={isEditing} onToggle={toggleEdit} />}
-
+                    {!readOnly && (
+                        <EditToolbar isEditing={isEditing} onToggle={toggleEdit} />
+                    )}
                     <Link
-                        href={daysOfWeekHref}
-                        className="rounded bg-teal-100 px-3 py-1.5 text-sm font-medium text-slate-800 shadow hover:bg-teal-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
-                        aria-label="Open Days of Week matrix"
-                        title="Open Days of Week matrix"
+                        href={`${daysOfWeekHref}`}
+                        className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 hover:bg-white/10"
                     >
                         Days of Week
                     </Link>
@@ -236,23 +330,23 @@ export default function DayInLifePageClient({ readOnly = false }: DayInLifePageC
 
             {/* Banner */}
             {banner && (
-                <div
-                    role="status"
-                    className="mb-4 rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 shadow-sm"
-                >
+                <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-slate-200">
                     {banner}
                 </div>
             )}
 
             {/* Main Board */}
-            <Board sections={sections} setSections={boardSetSections} isEditing={readOnly ? false : isEditing} role={role} />
+            <Board
+                sections={sections}
+                setSections={boardSetSections}
+                isEditing={isEditing && !readOnly}
+                role={role}
+            />
 
             {/* Saving overlay */}
             {isEditing && busy && !readOnly && (
-                <div className="pointer-events-none fixed inset-0 z-50 flex items-start justify-center">
-                    <div className="mt-8 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm text-slate-800 shadow-lg">
-                        Saving…
-                    </div>
+                <div className="fixed bottom-4 right-4 rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200 shadow-lg">
+                    Saving…
                 </div>
             )}
         </div>
