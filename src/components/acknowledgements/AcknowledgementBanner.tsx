@@ -52,7 +52,7 @@ export default function AcknowledgementBanner({
 
     const reviewedLabel = useMemo(() => {
         const d = formatDate(acknowledgedAt);
-        return d ? `✅ Reviewed on ${d}` : `✅ Reviewed`;
+        return d ? `Reviewed on ${d}` : `Reviewed`;
     }, [acknowledgedAt]);
 
     const helper = useMemo(() => {
@@ -96,9 +96,7 @@ export default function AcknowledgementBanner({
             try {
                 const json = JSON.parse(text);
                 if (json?.acknowledgedAt) nextAt = json.acknowledgedAt;
-            } catch {
-                // ignore
-            }
+            } catch { }
 
             onAcknowledged?.({
                 acknowledgedVersion: currentVersion && currentVersion > 0 ? currentVersion : 1,
@@ -114,15 +112,20 @@ export default function AcknowledgementBanner({
         }
     }
 
-    // ✅ Satisfied state: readable but quiet, no background
+    // ✅ UPDATED: reviewed state uses SAME container styling, no checkbox
     if (!needsAck) {
-        return <div className="px-1 py-1 text-sm text-slate-300">{reviewedLabel}</div>;
+        return (
+            <div className="px-3 py-2 rounded-md border border-slate-200 bg-slate-50">
+                <div className="text-sm font-semibold text-slate-800">
+                    {reviewedLabel}
+                </div>
+            </div>
+        );
     }
 
     return (
         <div className="px-3 py-2 rounded-md border border-slate-200 bg-slate-50">
             <div className="flex items-start gap-3">
-                {/* Visible checkbox */}
                 <button
                     type="button"
                     onClick={() => setOpen(true)}
@@ -141,7 +144,6 @@ export default function AcknowledgementBanner({
                 </button>
 
                 <div className="min-w-0">
-                    {/* Dark readable text */}
                     <div className="text-sm font-semibold text-slate-800">
                         {checkboxText}
                     </div>
@@ -156,7 +158,6 @@ export default function AcknowledgementBanner({
                 </div>
             </div>
 
-            {/* Modal */}
             {open ? (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
                     <div className="w-full max-w-lg rounded-lg border border-slate-200 bg-white p-5 shadow-xl">
