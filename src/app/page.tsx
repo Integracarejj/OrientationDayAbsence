@@ -23,19 +23,20 @@ function HomeCard({ title, description, href }: HomeCardProps) {
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ mode?: string }>;
+  searchParams: Promise<{ mode?: string }>;
 }) {
-  const params = (await searchParams) ?? {};
-  const mode = params.mode === "employee" ? "employee" : "supervisor";
+  const params = await searchParams;
+
+  const mode =
+    params?.mode === "employee" ? "employee" : "supervisor";
+
   const modeQuery = `?mode=${mode}`;
 
-  // ✅ THIS IS THE KEY FIX
   const dashboardHref =
     mode === "employee" ? "/me/dashboard" : "/dashboard";
 
   return (
     <div className="space-y-10">
-      {/* Welcome */}
       <section>
         <h1 className="text-2xl font-bold">Department Orientation</h1>
         <p className="mt-2 max-w-2xl text-sm text-[hsl(var(--app-fg)/0.75)]">
@@ -44,7 +45,6 @@ export default async function HomePage({
         </p>
       </section>
 
-      {/* Primary actions */}
       <section>
         <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-[hsl(var(--app-fg)/0.6)]">
           Get started
