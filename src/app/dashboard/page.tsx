@@ -1,5 +1,3 @@
-import { headers } from "next/headers";
-
 type AckRecord = {
     acknowledgedVersion: number;
     acknowledgedAt: string;
@@ -15,9 +13,6 @@ type AcknowledgementsJson = {
 };
 
 async function fetchAcknowledgements(): Promise<AcknowledgementsJson> {
-    // NOTE:
-    // We are calling the Azure Function directly here (server-side),
-    // just like other dashboard-style pages in your app.
     const base = process.env.AZURE_FUNCTION_BASE_URL;
     const code = process.env.AZURE_FUNCTION_CODE;
 
@@ -47,6 +42,29 @@ function formatDate(iso?: string) {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "—";
     return d.toLocaleDateString();
+}
+
+function StatusPill({
+    ok,
+    labelOk,
+    labelBad,
+}: {
+    ok: boolean;
+    labelOk: string;
+    labelBad: string;
+}) {
+    return (
+        <span
+            className={[
+                "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
+                ok
+                    ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                    : "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+            ].join(" ")}
+        >
+            {ok ? `✅ ${labelOk}` : `⚠️ ${labelBad}`}
+        </span>
+    );
 }
 
 export default async function SupervisorDashboardPage() {
@@ -90,8 +108,9 @@ export default async function SupervisorDashboardPage() {
         };
     });
 
-    const dayReviewed = roleRows.filter((r) => r.dayComplete).length;
-    const absenceReviewed = roleRows.filter((r) => r.absenceComplete).length;
+    const outstanding = roleRows.filter(
+        (r) => !r.dayComplete || !r.absenceComplete
+    ).length;
 
     return (
         <main className="space-y-8">
@@ -106,56 +125,80 @@ export default async function SupervisorDashboardPage() {
             {/* KPI cards */}
             <section className="grid grid-cols-1 gap-4 md:grid-cols-4">
                 <div className="rounded-lg border bg-white p-4">
-                    <div className="text-sm text-slate-500">Employees</div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500">
+                        Employees
+                    </div>
                     <div className="mt-1 text-2xl font-semibold">{users.length}</div>
                 </div>
 
                 <div className="rounded-lg border bg-white p-4">
-                    <div className="text-sm text-slate-500">Day in the Life</div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500">
+                        Day in the Life
+                    </div>
                     <div className="mt-1 text-2xl font-semibold">
-                        {dayReviewed}/{roleRows.length}
+                        {roleRows.filter((r) => r.dayComplete).length}/{roleRows.length}
                     </div>
                 </div>
 
                 <div className="rounded-lg border bg-white p-4">
-                    <div className="text-sm text-slate-500">In the Absence</div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500">
+                        In the Absence
+                    </div>
                     <div className="mt-1 text-2xl font-semibold">
-                        {absenceReviewed}/{roleRows.length}
+                        {roleRows.filter((r) => r.absenceComplete).length}/{roleRows.length}
                     </div>
                 </div>
 
-                <div className="rounded-lg border bg-white p-4">
-                    <div className="text-sm text-slate-500">Outstanding Roles</div>
-                    <div className="mt-1 text-2xl font-semibold">
-                        {
-                            roleRows.filter(
-                                (r) => !r.dayComplete || !r.absenceComplete
-                            ).length
-                        }
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+                    <div className="text-xs uppercase tracking-wide text-amber-700">
+                        Outstanding Roles
+                    </div>
+                    <div className="mt-1 text-2xl font-semibold text-amber-800">
+                        {outstanding}
+                    </div>
+                    <div className="mt-1 text-xs text-amber-700">
+                        Roles needing attention
                     </div>
                 </div>
             </section>
 
             {/* Role table */}
-            <section className="rounded-lg border bg-white">
+            <section className="overflow-hidden rounded-lg border bg-white">
                 <table className="w-full text-sm">
-                    <thead className="border-b bg-slate-50">
+                    <thead className="bg-slate-50 text-slate-600">
                         <tr>
-                            <th className="px-4 py-2 text-left">Role</th>
-                            <th className="px-4 py-2 text-left">Day in the Life</th>
-                            <th className="px-4 py-2 text-left">In the Absence</th>
-                            <th className="px-4 py-2 text-left">Last Activity</th>
+                            <th className="px-4 py-2 text-left font-semibold">Role</th>
+                            <th className="px-4 py-2 text-left font-semibold">
+                                Day in the Life
+                            </th>
+                            <th className="px-4 py-2 text-left font-semibold">
+                                In the Absence
+                            </th>
+                            <th className="px-4 py-2 text-left font-semibold">
+                                Last Activity
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
                         {roleRows.map((r) => (
-                            <tr key={r.role} className="border-b last:border-b-0">
+                            <tr
+                                key={r.role}
+                                className="border-t last:border-b-0 hover:bg-slate-50"
+                            >
                                 <td className="px-4 py-2 font-medium">{r.role}</td>
                                 <td className="px-4 py-2">
-                                    {r.dayComplete ? "✅ Complete" : "⚠️ Pending"}
+                                    <StatusPill
+                                        ok={r.dayComplete}
+                                        labelOk="Complete"
+                                        labelBad="Pending"
+                                    />
                                 </td>
                                 <td className="px-4 py-2">
-                                    {r.absenceComplete ? "✅ Complete" : "⚠️ Pending"}
+                                    <StatusPill
+                                        ok={r.absenceComplete}
+                                        labelOk="Complete"
+                                        labelBad="Pending"
+                                    />
                                 </td>
                                 <td className="px-4 py-2 text-slate-500">
                                     {formatDate(r.latest ?? undefined)}

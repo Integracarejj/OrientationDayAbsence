@@ -29,7 +29,9 @@ const SUPERVISOR_NAV: NavLink[] = [
 ];
 
 const EMPLOYEE_NAV: NavLink[] = [
-    { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
+    // ✅ FIX: employee dashboard lives under /me
+    { href: "/me/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
+
     { href: "/me/orientation", label: "My Orientation", icon: <Users size={18} /> },
     { href: "/me/day-in-life", label: "Day in Life", icon: <CalendarDays size={18} /> },
     { href: "/in-the-absence", label: "In Absence Of", icon: <UserX size={18} /> },
@@ -57,7 +59,6 @@ export function Sidebar({
     };
 
     return (
-        /* teal background now comes from AppShell variable again */
         <div className="flex h-full flex-col px-3 py-3">
             {/* Top row */}
             <div className="flex items-center justify-between gap-2">
