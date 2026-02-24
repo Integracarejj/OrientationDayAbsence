@@ -1,4 +1,5 @@
 import "./globals.css";
+import { Suspense } from "react";
 import { AppShellClient } from "../components/layout/AppShellClient";
 
 export default function RootLayout({
@@ -9,7 +10,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AppShellClient>{children}</AppShellClient>
+        <Suspense fallback={null}>
+          <AppShellClient>{children}</AppShellClient>
+        </Suspense>
       </body>
     </html>
   );
