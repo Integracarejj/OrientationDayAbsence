@@ -116,18 +116,24 @@ export default function ResponsibilityTable({
     const [scrollWidth, setScrollWidth] = useState<number>(0);
     const [showStickyBottomBar, setShowStickyBottomBar] = useState<boolean>(false);
 
-    // Measure scrollWidth and whether vertical overflow exists.
-    // We only show the sticky bottom scrollbar when the table area scrolls vertically;
-    // otherwise we'd get a "double" horizontal scrollbar (like you're seeing on DED).
+    // Measure scrollWidth and whether vertical + horizontal overflow exist.
+    // We show the sticky bottom scrollbar ONLY when:
+    // - the table area scrolls vertically (lots of rows), AND
+    // - the content overflows horizontally (wide table)
+    // This prevents the "double" horizontal scrollbar.
     useEffect(() => {
         const el = mainScrollRef.current;
         if (!el) return;
 
         const measure = () => {
+            // Full scrollable width of the main scroller (used to size the bottom track)
             setScrollWidth(el.scrollWidth);
+
             // +1 guard to avoid jitter from sub-pixel rounding
             const hasVerticalOverflow = el.scrollHeight > el.clientHeight + 1;
-            setShowStickyBottomBar(hasVerticalOverflow);
+            const hasHorizontalOverflow = el.scrollWidth > el.clientWidth + 1;
+
+            setShowStickyBottomBar(hasVerticalOverflow && hasHorizontalOverflow);
         };
 
         measure();
@@ -188,7 +194,15 @@ export default function ResponsibilityTable({
             {/* Card wrapper */}
             <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
                 {/* MAIN SCROLLER (vertical scrollbar on right) */}
-                <div ref={mainScrollRef} className="max-h-[70vh] overflow-auto">
+                <div
+                    ref={mainScrollRef}
+                    className={[
+                        "max-h-[70vh]",
+                        "overflow-y-auto",
+                        // When sticky bottom bar is shown, hide native horizontal scrollbar here to prevent double bars.
+                        showStickyBottomBar ? "overflow-x-hidden" : "overflow-x-auto",
+                    ].join(" ")}
+                >
                     <table className="min-w-full border-collapse text-left text-sm">
                         {/* Sticky header */}
                         <thead className="sticky top-0 z-10 bg-slate-50 shadow-sm">
@@ -229,7 +243,7 @@ export default function ResponsibilityTable({
                                                             rows={Math.min(6, Math.max(2, Math.ceil((value.length + 1) / 60)))}
                                                         />
                                                     ) : (
-                                                        <div className="whitespace-pre-wrap wrap-break-word">{value}</div>
+                                                        <div className="whitespace-pre-wrap-break-words">{value}</div>
                                                     )}
                                                 </td>
                                             );

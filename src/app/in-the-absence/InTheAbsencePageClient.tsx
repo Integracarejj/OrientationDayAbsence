@@ -52,13 +52,22 @@ export default function InTheAbsencePageClient({ readOnly = false }: { readOnly?
     // -------------------------
     async function load() {
         const res = await fetch("/api/in-the-absence/summary", { cache: "no-store" });
+
+        // ✅ Read a clone for logging/debugging (does NOT consume the original body)
+        const raw = await res.clone().text();
+        console.log("[InAbsence summary raw]", raw);
+
         if (!res.ok) {
-            const body = await res.text();
-            console.error("Failed to load In Absence Of summary:", res.status, body);
+            console.error("Failed to load In Absence Of summary:", res.status, raw);
             setBanner("We couldn't load the In the Absence Of data. See console for details.");
             return;
         }
+
+        // ✅ Consume the original body exactly once
         const json = (await res.json()) as InAbsenceSummaryResponse;
+
+        console.log("[InAbsence summary parsed]", json);
+        console.log("[InAbsence roles keys]", Object.keys(json.roles ?? {}));
         setData(json);
     }
 
@@ -260,7 +269,7 @@ export default function InTheAbsencePageClient({ readOnly = false }: { readOnly?
                             type="button"
                             onClick={onEditToggle}
                             disabled={busy}
-                            className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 hover:bg-white/10 disabled:opacity-60"
+                            className="rounded-md bg-teal-200 px-3 py-2 text-sm font-medium text-slate-900 shadow-sm hover:bg-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 disabled:opacity-60"
                         >
                             {isEditing ? "Done" : "Edit"}
                         </button>
