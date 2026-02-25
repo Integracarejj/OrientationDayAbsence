@@ -1,7 +1,9 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+
 /* install first:
  npm install lucide-react
 */
@@ -12,12 +14,16 @@ import {
     CalendarDays,
     UserX,
     PanelLeft,
+    LineChart,
 } from "lucide-react";
+
+import { EXTERNAL_LINKS } from "@/lib/externalLinks";
 
 type NavLink = {
     href: string;
     label: string;
     icon: React.ReactNode;
+    external?: boolean;
 };
 
 /* ---------------- NAV CONFIG ---------------- */
@@ -26,12 +32,18 @@ const SUPERVISOR_NAV: NavLink[] = [
     { href: "/employees", label: "Employees", icon: <Users size={18} /> },
     { href: "/day-in-life", label: "Day in Life", icon: <CalendarDays size={18} /> },
     { href: "/in-the-absence", label: "In Absence Of", icon: <UserX size={18} /> },
+
+    // ✅ Hallmarks — Supervisor + Exec only (external)
+    {
+        href: EXTERNAL_LINKS.hallmarksTracker,
+        label: "Hallmarks",
+        icon: <LineChart size={18} />,
+        external: true,
+    },
 ];
 
 const EMPLOYEE_NAV: NavLink[] = [
-    // ✅ FIX: employee dashboard lives under /me
     { href: "/me/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
-
     { href: "/me/orientation", label: "My Orientation", icon: <Users size={18} /> },
     { href: "/me/day-in-life", label: "Day in Life", icon: <CalendarDays size={18} /> },
     { href: "/in-the-absence", label: "In Absence Of", icon: <UserX size={18} /> },
@@ -47,7 +59,15 @@ export function Sidebar({
 }) {
     const pathname = usePathname() ?? "/";
     const params = useSearchParams();
-    const mode = params.get("mode") === "employee" ? "employee" : "supervisor";
+
+    // ✅ supervisor | exec | employee
+    const mode =
+        params.get("mode") === "employee"
+            ? "employee"
+            : params.get("mode") === "exec"
+                ? "exec"
+                : "supervisor";
+
     const modeQuery = `?mode=${mode}`;
     const nav = mode === "employee" ? EMPLOYEE_NAV : SUPERVISOR_NAV;
 
@@ -83,16 +103,28 @@ export function Sidebar({
 
             {/* NAV */}
             <nav className="mt-8 space-y-3">
-                {nav.map((item) => (
-                    <NavItem
-                        key={item.href}
-                        href={withMode(item.href)}
-                        label={item.label}
-                        icon={item.icon}
-                        collapsed={collapsed}
-                        active={isActiveHref(item.href)}
-                    />
-                ))}
+                {nav.map((item) =>
+                    item.external ? (
+                        <NavItem
+                            key={item.label}
+                            href={item.href}
+                            label={item.label}
+                            icon={item.icon}
+                            collapsed={collapsed}
+                            active={false}
+                            external
+                        />
+                    ) : (
+                        <NavItem
+                            key={item.href}
+                            href={withMode(item.href)}
+                            label={item.label}
+                            icon={item.icon}
+                            collapsed={collapsed}
+                            active={isActiveHref(item.href)}
+                        />
+                    )
+                )}
             </nav>
 
             <div className="flex-1" />
@@ -107,28 +139,40 @@ function NavItem({
     icon,
     collapsed,
     active,
+    external,
 }: {
     href: string;
     label: string;
     icon: React.ReactNode;
     collapsed: boolean;
     active: boolean;
+    external?: boolean;
 }) {
-    return (
-        <Link
-            href={href}
-            className={[
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm",
-                "ring-1 transition-all duration-150",
-                active
-                    ? "bg-white font-medium shadow-sm ring-[hsl(var(--app-border))]"
-                    : "ring-transparent hover:bg-white/70 hover:ring-[hsl(var(--app-border))]",
-            ].join(" ")}
-        >
-            {/* Icon (always visible) */}
-            <span className="shrink-0">{icon}</span>
+    const className = [
+        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm",
+        "ring-1 transition-all duration-150",
+        active
+            ? "bg-white font-medium shadow-sm ring-[hsl(var(--app-border))]"
+            : "ring-transparent hover:bg-white/70 hover:ring-[hsl(var(--app-border))]",
+    ].join(" ");
 
-            {/* Label only when expanded */}
+    if (external) {
+        return (
+            <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={className}
+            >
+                <span className="shrink-0">{icon}</span>
+                {!collapsed && <span className="truncate">{label}</span>}
+            </a>
+        );
+    }
+
+    return (
+        <Link href={href} className={className}>
+            <span className="shrink-0">{icon}</span>
             {!collapsed && <span className="truncate">{label}</span>}
         </Link>
     );
